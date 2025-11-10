@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
-import { FolderHeart, Plus } from 'lucide-react';
+import { FolderHeart, Plus, Share2, Copy, Check } from 'lucide-react';
 
 export default function Collections() {
   const [collections, setCollections] = useState<any[]>([]);
@@ -20,6 +20,7 @@ export default function Collections() {
     isPublic: true,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -65,6 +66,19 @@ export default function Collections() {
     setNewCollection({ name: '', description: '', isPublic: true });
     setDialogOpen(false);
     loadCollections();
+  };
+
+  const handleShare = async (collectionId: string, isPublic: boolean) => {
+    if (!isPublic) {
+      toast.error('Only public collections can be shared');
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/collections/${collectionId}`;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopiedId(collectionId);
+    toast.success('Share link copied to clipboard!');
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -151,17 +165,34 @@ export default function Collections() {
             {collections.map((collection) => (
               <Card key={collection.id} className="hover:shadow-hover transition-shadow">
                 <CardHeader>
-                  <CardTitle>{collection.name}</CardTitle>
-                  <CardDescription>
-                    {collection.description || 'No description'}
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle>{collection.name}</CardTitle>
+                      <CardDescription>
+                        {collection.description || 'No description'}
+                      </CardDescription>
+                    </div>
+                    {collection.is_public && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleShare(collection.id, collection.is_public)}
+                      >
+                        {copiedId === collection.id ? (
+                          <Check className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Share2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
                     {collection.collection_items?.[0]?.count || 0} items
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {collection.is_public ? 'Public' : 'Private'}
+                    {collection.is_public ? '🌍 Public' : '🔒 Private'}
                   </p>
                 </CardContent>
               </Card>

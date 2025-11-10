@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ProductCard } from '@/components/ProductCard';
+import { RecommendationsSection } from '@/components/RecommendationsSection';
+import { SocialFeed } from '@/components/SocialFeed';
+import { ProductFilters, FilterState } from '@/components/ProductFilters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -70,7 +73,9 @@ const sampleProducts = [
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState<any[]>([]);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<FilterState>({ priceRange: [0, 500], categories: [], tags: [] });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -88,13 +93,41 @@ export default function Index() {
 
     if (error) {
       console.error('Error loading products:', error);
+      setAllProducts(sampleProducts);
       setProducts(sampleProducts);
     } else if (data && data.length > 0) {
+      setAllProducts(data);
       setProducts(data);
     } else {
+      setAllProducts(sampleProducts);
       setProducts(sampleProducts);
     }
   };
+
+  const applyFilters = (productsToFilter: any[]) => {
+    let filtered = [...productsToFilter];
+
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 500) {
+      filtered = filtered.filter(p => p.price >= filters.priceRange[0] && p.price <= filters.priceRange[1]);
+    }
+
+    if (filters.categories.length > 0) {
+      filtered = filtered.filter(p => filters.categories.includes(p.category));
+    }
+
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter(p => 
+        p.tags?.some((tag: string) => filters.tags.includes(tag))
+      );
+    }
+
+    return filtered;
+  };
+
+  useEffect(() => {
+    const filtered = applyFilters(allProducts);
+    setProducts(filtered);
+  }, [filters, allProducts]);
 
   const loadFavorites = async () => {
     if (!user) return;
@@ -178,13 +211,19 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Recommendations */}
+      <RecommendationsSection />
+
       {/* Products Section */}
       <section className="container mx-auto px-4 py-16">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Product Catalog</h2>
-          <p className="text-muted-foreground">
-            Browse our curated collection of fashion items
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Product Catalog</h2>
+            <p className="text-muted-foreground">
+              Browse our curated collection • {products.length} items
+            </p>
+          </div>
+          <ProductFilters onFilterChange={setFilters} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -203,6 +242,9 @@ export default function Index() {
           ))}
         </div>
       </section>
+
+      {/* Social Feed */}
+      <SocialFeed />
     </div>
   );
 }
